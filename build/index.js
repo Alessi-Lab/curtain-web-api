@@ -1,0 +1,15 @@
+"use strict";
+Object.defineProperty(exports, "__esModule", { value: true });
+exports.reviver = exports.replacer = exports.getStringDBInteractions = exports.getInteractomeAtlas = exports.getEBIAlpha = exports.getPrideData = exports.getProteomicsData = exports.User = exports.CurtainWebAPI = void 0;
+const curtain_api_1 = require("./classes/curtain-api");
+Object.defineProperty(exports, "CurtainWebAPI", { enumerable: true, get: function () { return curtain_api_1.CurtainWebAPI; } });
+Object.defineProperty(exports, "replacer", { enumerable: true, get: function () { return curtain_api_1.replacer; } });
+Object.defineProperty(exports, "reviver", { enumerable: true, get: function () { return curtain_api_1.reviver; } });
+const curtain_user_1 = require("./classes/curtain-user");
+Object.defineProperty(exports, "User", { enumerable: true, get: function () { return curtain_user_1.User; } });
+const utilities_1 = require("./utilities");
+Object.defineProperty(exports, "getProteomicsData", { enumerable: true, get: function () { return utilities_1.getProteomicsData; } });
+Object.defineProperty(exports, "getPrideData", { enumerable: true, get: function () { return utilities_1.getPrideData; } });
+Object.defineProperty(exports, "getEBIAlpha", { enumerable: true, get: function () { return utilities_1.getEBIAlpha; } });
+Object.defineProperty(exports, "getInteractomeAtlas", { enumerable: true, get: function () { return utilities_1.getInteractomeAtlas; } });
+Object.defineProperty(exports, "getStringDBInteractions", { enumerable: true, get: function () { return utilities_1.getStringDBInteractions; } });
