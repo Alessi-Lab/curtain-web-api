@@ -94,26 +94,49 @@ export class User {
         });
     }
 
-    saveIntoDB() {
-        return this.db.put({
-            _id: "user",
-            access_token: this.access_token,
-            refresh_token: this.refresh_token,
-            username: this.username,
-            loginStatus: this.loginStatus,
-            isStaff: this.isStaff,
-            id: this.id,
-            totalCurtain: this.totalCurtain,
-            canDelete: this.canDelete,
-            curtainLinkLimit: this.curtainLinkLimit,
-            curtainLinkLimitExceeded: this.curtainLinkLimitExceeded,
-            lastAccessTokenUpdate: this.lastAccessTokenUpdate,
-            lastRefreshTokenUpdate: this.lastRefreshTokenUpdate
-        }).then((response) => {
-            console.log(response);
-        }).catch((error) => {
-            console.log(error);
-        });
+    saveIntoDB(accessToken: string, refreshToken: string) {
+        this.access_token = accessToken;
+        this.refresh_token = refreshToken;
+        this.loginStatus = true;
+        return this.db.get("user").catch((error) => {
+          if (error.name === "not_found") {
+            return {
+                _id: "user",
+                access_token: accessToken,
+                refresh_token: refreshToken,
+                username: this.username,
+                loginStatus: true,
+                isStaff: this.isStaff,
+                id: this.id,
+                totalCurtain: this.totalCurtain,
+                canDelete: this.canDelete,
+                curtainLinkLimit: this.curtainLinkLimit,
+                curtainLinkLimitExceeded: this.curtainLinkLimitExceeded,
+                lastAccessTokenUpdate: this.lastAccessTokenUpdate,
+                lastRefreshTokenUpdate: this.lastRefreshTokenUpdate
+            }
+          } else {
+            throw error
+          }
+        }).then((doc: any) => {
+            console.log(accessToken, refreshToken)
+            return this.db.put({
+                _id: "user",
+                _rev: doc._rev,
+                access_token: accessToken,
+                refresh_token: refreshToken,
+                username: this.username,
+                loginStatus: true,
+                isStaff: this.isStaff,
+                id: this.id,
+                totalCurtain: this.totalCurtain,
+                canDelete: this.canDelete,
+                curtainLinkLimit: this.curtainLinkLimit,
+                curtainLinkLimitExceeded: this.curtainLinkLimitExceeded,
+                lastAccessTokenUpdate: this.lastAccessTokenUpdate,
+                lastRefreshTokenUpdate: this.lastRefreshTokenUpdate
+            })
+        })
     }
 
     loadFromDB() {

@@ -29,6 +29,7 @@ export class CurtainWebAPI {
     refereshURL: string = "";
     orcidLoginURL: string = "";
     userInfoURL: string = "";
+    curtainURL: string = "";
     user: User = new User();
     isRefreshing: boolean = false;
     axiosInstance = axios.create()
@@ -41,6 +42,7 @@ export class CurtainWebAPI {
         this.refereshURL = baseURL + "token/refresh/";
         this.orcidLoginURL = baseURL + "rest-auth/orcid/";
         this.userInfoURL = baseURL + "user/";
+        this.curtainURL = baseURL + "curtain/"
         this.axiosInstance.interceptors.request.use((config) => {
             if (config.url) {
                 /*if (!this.checkIfRefreshTokenExpired() && this.user.loginStatus) {
@@ -68,7 +70,7 @@ export class CurtainWebAPI {
                     //config.url === this.refereshURL ||
                     config.url === this.logoutURL ||
                     config.url === this.userInfoURL ||
-                    config.url.startsWith(this.baseURL + "curtain/") ||
+                    config.url.startsWith(this.curtainURL) ||
                     config.url.startsWith(this.baseURL + "data_filter_list/")) {
                     if (this.user.loginStatus) {
                         config.headers["Authorization"] = "Bearer " + this.user.access_token;
@@ -112,11 +114,10 @@ export class CurtainWebAPI {
         headers["Content-Type"] = "application/json";
         headers["withCredentials"] = "true";
         return this.axiosInstance.post(this.loginURL, {username, password}, {headers: headers, responseType:"json"}).then((response) => {
-            this.user.access_token = response.data.access;
-            this.user.refresh_token = response.data.refresh;
             this.user.loginStatus = true;
-            this.user.saveIntoDB().then();
-            return this.getUserInfo();
+            return this.user.saveIntoDB(response.data.access, response.data.refresh).then((response) => {
+              return this.getUserInfo()
+            })
         });
     }
 
@@ -124,6 +125,7 @@ export class CurtainWebAPI {
         const headers = new AxiosHeaders();
         headers["Accept"] = "application/json";
         headers["Content-Type"] = "application/json";
+        console.log(this.user)
 
         return this.axiosInstance.post(this.userInfoURL, {}, {headers: headers, responseType: "json"}).then((response) => {
             this.user.canDelete = response.data.can_delete;
@@ -134,6 +136,7 @@ export class CurtainWebAPI {
             this.user.totalCurtain = response.data.total_curtain;
             this.user.curtainLinkLimitExceeded = response.data.curtain_link_limit_exceeded;
             return this.user.updateDB().then((response) => {
+                console.log(this.user)
                 return this.user;
             });
 
@@ -165,14 +168,17 @@ export class CurtainWebAPI {
         let headers = new AxiosHeaders();
         headers["Accept"] = "application/json";
         headers["Content-Type"] = "application/json";
-        return this.axiosInstance.post(this.orcidLoginURL, JSON.stringify({"auth_token": authorizationCode, "redirect_uri": redirectURI}), {headers: headers, responseType:"json"}).then((response) => {
-            this.user.access_token = response.data.access;
-            this.user.refresh_token = response.data.refresh;
-            this.user.loginStatus = true;
-            console.log(this.user)
-        }).then((response) => {
-            return this.getUserInfo();
-        });
+        return this.user.loadFromDB().then(
+            (response) => {
+                console.log(this.user)
+                return this.axiosInstance.post(this.orcidLoginURL, JSON.stringify({"auth_token": authorizationCode, "redirect_uri": redirectURI}), {headers: headers, responseType:"json"}).then((response) => {
+                    return this.user.saveIntoDB(response.data.access, response.data.refresh).then((response) => {
+                      console.log(this.user)
+                        return this.getUserInfo()
+                    })
+                })
+            }
+        )
     }
 
     checkIfRefreshTokenExpired() {
@@ -219,8 +225,14 @@ export class CurtainWebAPI {
         let headers = new AxiosHeaders();
         headers["Accept"] = "application/json";
         if (onDownloadProgress !== undefined) {
-            return this.axiosInstance.get(this.baseURL + "curtain/" + id + "/download/token=" + token + "/", {responseType:"json", onDownloadProgress: onDownloadProgress}).then((response) => {
-                return response;
+            return this.axiosInstance.get(this.baseURL + "curtain/" + id + "/download/token=" + token + "/", {responseType:"json"}).then((response) => {
+                if ("url" in response.data) {
+                    return this.axiosInstance.get(response.data.url, {responseType: "json", onDownloadProgress: onDownloadProgress}).then((response) => {
+                        return response;
+                    })
+                } else {
+                    return response;
+                }
             })
         }
         return this.axiosInstance.get(this.baseURL + "curtain/" + id + "/download/token=" + token + "/", {responseType:"json"}).then((response) => {
@@ -241,7 +253,7 @@ export class CurtainWebAPI {
         let headers = new AxiosHeaders();
         headers["Accept"] = "application/json";
         headers["Content-Type"] = "application/json";
-        return this.axiosInstance.post(this.baseURL + "curtain/" + linkId + "/generate_token", {lifetime: lifetime}, {headers: headers, responseType:"json"}).then((response) => {
+        return this.axiosInstance.post(this.baseURL + "curtain/" + linkId + "/generate_token/", {lifetime: lifetime}, {headers: headers, responseType:"json"}).then((response) => {
             return response;
         });
     }
@@ -411,7 +423,7 @@ export class CurtainWebAPI {
         let headers = new AxiosHeaders();
         headers["Accept"] = "application/json";
         headers["Content-Type"] = "application/json";
-        return axios.post(this.baseURL + "primitive-stats-test/", {data,type}, {headers: headers, responseType: "json"}).then((response) => {
+        return axios.post(this.baseURL + "primitive-stats-test/", {data,type},  ).then((response) => {
             return response;
         });
     }
@@ -421,6 +433,20 @@ export class CurtainWebAPI {
         headers["Accept"] = "application/json";
         headers["Content-Type"] = "application/json";
         return axios.get(this.baseURL + "data_filter_list/get_all_category/", {headers: headers, responseType: "json"}).then((response) => {return response;});
+    }
+
+    postCompareSession(idList: string[], matchType: string, studyList: string[], sessionId: string) {
+        let headers = new AxiosHeaders();
+        headers["Accept"] = "application/json";
+        headers["Content-Type"] = "application/json";
+        return axios.post(this.baseURL + "compare-session/", {matchType, studyList, idList, sessionId}, {headers: headers, responseType: "json"}).then((response) => {return response;});
+    }
+
+    getStatsSummary(lastNDays: number) {
+        let headers = new AxiosHeaders();
+        headers["Accept"] = "application/json";
+        headers["Content-Type"] = "application/json";
+        return this.axiosInstance.get(this.baseURL + `stats/summary/${lastNDays}/`, {responseType:"json", headers})
     }
 }
 
